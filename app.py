@@ -5,6 +5,7 @@ import os
 import random
 import secrets
 import sqlite3
+import tempfile
 import urllib.error
 import urllib.request
 import urllib.parse
@@ -93,9 +94,23 @@ else:
 # Helplines and Questions moved to DB
 
 
+def resolve_db_path():
+    """Use the configured DB path, falling back if the host has no writable disk mounted."""
+    global DB_PATH
+    configured_path = Path(DB_PATH)
+    try:
+        configured_path.parent.mkdir(parents=True, exist_ok=True)
+        return str(configured_path)
+    except OSError as exc:
+        fallback_path = Path(tempfile.gettempdir()) / "mental_buddy.db"
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Database path {configured_path} is not writable ({exc}); using {fallback_path}")
+        DB_PATH = str(fallback_path)
+        return DB_PATH
+
+
 def get_db():
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(resolve_db_path())
     conn.row_factory = sqlite3.Row
     return conn
 

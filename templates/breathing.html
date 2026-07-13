@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Breathing Exercise{% endblock %}
+{% block content %}
+<section class="card">
+    <h2>Guided breathing</h2>
+    <p class="muted breathing-intro">Pick a rhythm, session length, and optional voice cues. Follow the orb.</p>
+    <div class="breathing-orb-wrap">
+        <div id="orb" class="orb" role="img" aria-label="Breathing pace indicator"></div>
+    </div>
+    <h3 id="phaseText" class="breathing-phase">Ready</h3>
+    <div class="button-row breathing-controls">
+        <select id="mode" aria-label="Breathing pattern">
+            {% for m in breathing_modes %}
+            <option value="{{ m.id }}">{{ m.label }} ({{ m.inhale }}-{{ m.hold }}-{{ m.exhale }})</option>
+            {% endfor %}
+        </select>
+        <select id="duration" aria-label="Session length">
+            <option value="60000">1 min</option>
+            <option value="180000" selected>3 min</option>
+            <option value="300000">5 min</option>
+        </select>
+    </div>
+    <label class="breathing-voice-toggle">
+        <input type="checkbox" id="voiceOn" checked>
+        Voice guidance (speaks inhale, hold, exhale)
+    </label>
+    <div class="button-row">
+        <button type="button" class="btn primary" id="startBtn">Start</button>
+        <button type="button" class="btn ghost" id="stopBtn">Stop</button>
+    </div>
+    <p class="muted small-print">Tip: for longer soundscapes, use <a href="{{ url_for('music') }}">Music therapy</a>.</p>
+</section>
+
+<script>
+const BREATHING_MODES = {{ breathing_modes | tojson }};
+const orb = document.getElementById("orb");
+const phaseText = document.getElementById("phaseText");
+const modeEl = document.getElementById("mode");
+const durationEl = document.getElementById("duration");
+const voiceOn = document.getElementById("voiceOn");
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+
+let running = false;
+let timeoutIDs = [];
+let sessionEnd = 0;
+
+function getPattern() {
+    const id = modeEl.value;
+    const row = BREATHING_MODES.find((m) => m.id === id);
+    return row
+        ? { inhale: row.inhale, hold: row.hold, exhale: row.exhale }
+        : { inhale: 4, hold: 4, exhale: 4 };
+}
+
+function speak(msg) {
+    if (!voiceOn.checked || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(msg);
+    u.rate = 0.92;
+    window.speechSynthesis.speak(u);
+}
+
+function finishSession() {
+    running = false;
+    timeoutIDs.forEach((id) => clearTimeout(id));
+    timeoutIDs = [];
+    phaseText.textContent = "Session complete";
+    orb.classList.remove("big");
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (voiceOn.checked && window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance("Session complete");
+        u.rate = 0.92;
+        window.speechSynthesis.speak(u);
+    }
+}
+
+function sessionTimeUp() {
+    return Date.now() >= sessionEnd;
+}
+
+function setOrbTransition(seconds) {
+    const dur = Math.max(0.3, seconds);
+    orb.style.transition = `transform ${dur}s ease-in-out`;
+}
+
+function start() {
+    if (running) return;
+    running = true;
+    const pattern = getPattern();
+    const durationMs = parseInt(durationEl.value, 10);
+    sessionEnd = Date.now() + durationMs;
+
+    function cycle() {
+        if (!running || sessionTimeUp()) {
+            finishSession();
+            return;
+        }
+
+        setOrbTransition(pattern.inhale);
+        phaseText.textContent = "Inhale…";
+        speak("Inhale");
+        orb.classList.add("big");
+
+        timeoutIDs.push(
+            setTimeout(() => {
+                if (!running) return;
+                if (sessionTimeUp()) {
+                    finishSession();
+                    return;
+                }
+                phaseText.textContent = "Hold…";
+                speak("Hold");
+
+                timeoutIDs.push(
+                    setTimeout(() => {
+                        if (!running) return;
+                        if (sessionTimeUp()) {
+                            finishSession();
+                            return;
+                        }
+                        setOrbTransition(pattern.exhale);
+                        phaseText.textContent = "Exhale…";
+                        speak("Exhale");
+                        orb.classList.remove("big");
+
+                        timeoutIDs.push(
+                            setTimeout(() => {
+                                if (!running) return;
+                                if (sessionTimeUp()) {
+                                    finishSession();
+                                    return;
+                                }
+                                cycle();
+                            }, pattern.exhale * 1000)
+                        );
+                    }, pattern.hold * 1000)
+                );
+            }, pattern.inhale * 1000)
+        );
+    }
+
+    cycle();
+}
+
+function stop() {
+    running = false;
+    timeoutIDs.forEach((id) => clearTimeout(id));
+    timeoutIDs = [];
+    phaseText.textContent = "Stopped";
+    orb.classList.remove("big");
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+startBtn.onclick = start;
+stopBtn.onclick = stop;
+</script>
+{% endblock %}

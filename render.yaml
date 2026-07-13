@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: mental-health-buddy
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_PATH
+        value: /var/data/mental_buddy.db
+    disk:
+      name: mental-health-buddy-data
+      mountPath: /var/data
+      sizeGB: 1

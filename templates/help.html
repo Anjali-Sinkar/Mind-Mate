@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Help &amp; India helplines{% endblock %}
+{% block content %}
+<section class="card hero">
+    <h1>🆘 You are not alone</h1>
+    <p class="muted">If you or someone you know is in immediate danger, call <strong>112</strong> (India emergency) or go to the nearest hospital.</p>
+</section>
+<section class="card">
+    <h2>India — mental health &amp; crisis lines</h2>
+    <p class="tiny muted">Numbers change; verify on official sites. This app is not a substitute for professional care.</p>
+    <ul class="helpline-list">
+        {% for h in helplines %}
+        <li class="helpline-item">
+            <strong>{{ h.name }}</strong>
+            <span class="helpline-num">{{ h.number }}</span>
+            <span class="muted tiny">{{ h.note }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

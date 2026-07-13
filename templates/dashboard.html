@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="card float-soft">
+    <h2>📊 Your dashboard</h2>
+    <p class="muted">Time you have spent in the app (estimated from open sessions) and your assessment trends.</p>
+    <div class="stat-badges" id="timeStats">
+        <div class="stat-badge"><span class="stat-label">Total time</span><strong id="totalTime">—</strong></div>
+        <div class="stat-badge"><span class="stat-label">Assessments</span><strong id="assessCount">—</strong></div>
+    </div>
+</section>
+<section class="grid-2">
+    <div class="panel card-hover">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap;">
+            <div>
+                <h3>Wellness scores over time</h3>
+                <p class="muted tiny" id="trendSubtitle">Loading assessments…</p>
+            </div>
+            <label class="muted tiny" style="display:flex; align-items:center; gap:0.45rem;">
+                View
+                <select id="trendRange" style="padding:0.35rem 0.6rem; border-radius:0.5rem; border:1px solid #9fc7d7; background:#fff; color:#295669;">
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                </select>
+            </label>
+        </div>
+        <canvas id="trendChart"></canvas>
+    </div>
+    <div class="panel card-hover"><h3>Primary focus (counts)</h3><canvas id="summaryChart"></canvas></div>
+</section>
+<section class="card">
+    <h3>⏱ Time in app (recent days)</h3>
+    <p class="muted tiny">This shows your last 7 days of app time in a simple way, so it is easier to notice your streaks and effort.</p>
+    <p id="timeInsight" class="muted tiny" style="margin-top: 0.3rem;"></p>
+    <canvas id="timeChart" height="120"></canvas>
+</section>
+<section class="grid-2">
+    <div class="panel card-hover">
+        <h3>Care tools usage</h3>
+        <p class="muted tiny" id="toolInsight">No tool usage recorded yet.</p>
+        <canvas id="toolChart"></canvas>
+    </div>
+    <div class="panel card-hover">
+        <h3>Most used vs least used</h3>
+        <ul id="toolList" class="muted tiny" style="padding-left: 1rem; line-height: 1.6;"></ul>
+    </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+let trendChartInstance = null;
+let currentTrendRange = "weekly";
+
+async function loadData(range = currentTrendRange) {
+    const res = await fetch(`/api/dashboard-data?range=${encodeURIComponent(range)}`);
+    if (res.status === 401) { window.location.href = "/login"; return null; }
+    return await res.json();
+}
+
+function formatDuration(sec) {
+    if (sec == null) return "—";
+    const m = Math.floor(sec / 60);
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    if (h > 0) return h + " h " + min + " min";
+    return m + " min";
+}
+
+function rangeTitle(range) {
+    return range.charAt(0).toUpperCase() + range.slice(1);
+}
+
+async function renderCharts() {
+    const d = await loadData(currentTrendRange);
+    if (!d || !d.ok) return;
+
+    document.getElementById("totalTime").textContent = formatDuration(d.total_time_seconds);
+    const n = Number(d.assessment_count ?? (d.labels && d.labels.length ? d.labels.length : 0));
+    document.getElementById("assessCount").textContent = String(n);
+
+    const labels = d.labels?.length ? d.labels : ["No data yet"];
+    const stress = d.stress?.length ? d.stress : [0];
+    const anxiety = d.anxiety?.length ? d.anxiety : [0];
+    const depression = d.depression?.length ? d.depression : [0];
+    const summary = d.summary || { stress: 0, anxiety: 0, depression: 0 };
+
+    const trendTitle = labels.length > 1
+        ? `${rangeTitle(currentTrendRange)} assessment trend from ${labels[0]} to ${labels[labels.length - 1]}`
+        : `${rangeTitle(currentTrendRange)} assessment trend`;
+    document.getElementById("trendSubtitle").textContent = trendTitle;
+
+    if (trendChartInstance) {
+        trendChartInstance.destroy();
+    }
+
+    trendChartInstance = new Chart(document.getElementById("trendChart"), {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                { label: "Stress",     data: stress,     borderColor: "#f97f6b", backgroundColor: "rgba(249,127,107,0.08)", tension: 0.4, fill: true },
+                { label: "Anxiety",    data: anxiety,    borderColor: "#f5c842", backgroundColor: "rgba(245,200,66,0.08)",  tension: 0.4, fill: true },
+                { label: "Low mood",   data: depression, borderColor: "#29afd4", backgroundColor: "rgba(41,175,212,0.1)",   tension: 0.4, fill: true }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: "#4e7a8e", font: { family: "Outfit", size: 13 } } } },
+            scales: {
+                x: { ticks: { color: "#4e7a8e" }, grid: { color: "rgba(41,175,212,0.1)" } },
+                y: { ticks: { color: "#4e7a8e" }, grid: { color: "rgba(41,175,212,0.1)" }, beginAtZero: true }
+            }
+        }
+    });
+
+    new Chart(document.getElementById("summaryChart"), {
+        type: "doughnut",
+        data: {
+            labels: ["Stress", "Anxiety", "Low mood"],
+            datasets: [{
+                data: [summary.stress, summary.anxiety, summary.depression],
+                backgroundColor: ["#f97f6b", "#f5c842", "#29afd4"],
+                borderColor: ["#fff", "#fff", "#fff"],
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: "65%",
+            plugins: { legend: { labels: { color: "#4e7a8e", font: { family: "Outfit", size: 13 } } } }
+        }
+    });
+
+    const tl = d.time_labels?.length ? d.time_labels : ["—"];
+    const tm = d.time_minutes?.length ? d.time_minutes : [0];
+    const totalRecent = tm.reduce((sum, value) => sum + value, 0);
+    document.getElementById("timeInsight").textContent = totalRecent > 0
+        ? `You have spent about ${totalRecent.toFixed(1)} minutes in the app over the last 7 days.`
+        : "No recent app time yet — every small visit still counts.";
+    new Chart(document.getElementById("timeChart"), {
+        type: "bar",
+        data: {
+            labels: tl,
+            datasets: [{
+                label: "Minutes",
+                data: tm,
+                backgroundColor: "rgba(41,175,212,0.35)",
+                borderColor: "rgba(41,175,212,0.8)",
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: "#4e7a8e", maxRotation: 45 }, grid: { color: "rgba(41,175,212,0.08)" } },
+                y: { ticks: { color: "#4e7a8e" }, grid: { color: "rgba(41,175,212,0.08)" }, beginAtZero: true }
+            }
+        }
+    });
+
+    const toolLabels = d.tool_labels || [];
+    const toolValues = d.tool_values || [];
+    const toolSummary = d.tool_summary || [];
+    const toolInsight = document.getElementById("toolInsight");
+    const toolList = document.getElementById("toolList");
+    if (toolLabels.length && toolValues.length) {
+        const total = toolValues.reduce((sum, value) => sum + value, 0);
+        const most = toolSummary[0];
+        const least = toolSummary[toolSummary.length - 1];
+        toolInsight.textContent = total > 0
+            ? `You have used care tools ${total} times in total. Most used: ${most?.name || "—"}. Least used: ${least?.name || "—"}.`
+            : "No tool usage recorded yet.";
+        const items = toolSummary.map((item) => {
+            const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
+            return `<li><strong>${item.name}</strong> — ${item.count} time${item.count === 1 ? "" : "s"} (${pct}%)</li>`;
+        });
+        toolList.innerHTML = items.join("");
+        new Chart(document.getElementById("toolChart"), {
+            type: "doughnut",
+            data: {
+                labels: toolLabels,
+                datasets: [{
+                    data: toolValues,
+                    backgroundColor: ["#29afd4", "#f5c842", "#f97f6b", "#7dcf84", "#a78bfa"],
+                    borderColor: ["#fff", "#fff", "#fff", "#fff", "#fff"],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: "65%",
+                plugins: { legend: { labels: { color: "#4e7a8e", font: { family: "Outfit", size: 13 } } } }
+            }
+        });
+    } else {
+        toolInsight.textContent = "No tool usage recorded yet.";
+        toolList.innerHTML = "<li>Use a care tool from the app to start building this chart.</li>";
+        const toolCanvas = document.getElementById("toolChart");
+        const ctx = toolCanvas.getContext("2d");
+        ctx.clearRect(0, 0, toolCanvas.width, toolCanvas.height);
+    }
+}
+
+document.getElementById("trendRange").addEventListener("change", (event) => {
+    currentTrendRange = event.target.value;
+    renderCharts();
+});
+
+renderCharts();
+</script>
+{% endblock %}

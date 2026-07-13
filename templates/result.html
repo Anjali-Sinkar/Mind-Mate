@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Your results{% endblock %}
+{% block content %}
+<section class="card result-hero float-soft">
+    <div class="result-emoji" aria-hidden="true">✨</div>
+    <h2>Your wellness snapshot</h2>
+    <p class="muted">Hi {{ row["name"] }} — here is a gentle summary. Nothing here is a medical diagnosis.</p>
+    <div class="result-grid">
+        <div class="result-pill">
+            <span class="muted">Focus area</span>
+            <h3>{{ row["primary_result"].title() }}</h3>
+        </div>
+        <div class="result-pill">
+            <span class="muted">Facial mood hint</span>
+            <h3>{{ row["emotion"] }}</h3>
+        </div>
+    </div>
+    <div class="score-bars">
+        <div class="score-row"><span>Stress</span><div class="bar"><i style="width: {{ (row.stress_score * 100) // 9 }}%"></i></div><span>{{ row["stress_score"] }}</span></div>
+        <div class="score-row"><span>Anxiety</span><div class="bar"><i style="width: {{ (row.anxiety_score * 100) // 9 }}%"></i></div><span>{{ row["anxiety_score"] }}</span></div>
+        <div class="score-row"><span>Low mood</span><div class="bar"><i style="width: {{ (row.depression_score * 100) // 9 }}%"></i></div><span>{{ row["depression_score"] }}</span></div>
+    </div>
+    <p class="recommendation">{{ row["recommendation"] }}</p>
+    <div class="button-row">
+        <a class="btn primary pulse-glow" href="{{ url_for('report', assessment_id=row['id']) }}">📄 Download PDF report</a>
+        <a class="btn" href="{{ url_for('tools') }}">Care tools</a>
+        <a class="btn ghost" href="{{ url_for('dashboard') }}">Dashboard</a>
+    </div>
+</section>
+{% endblock %}

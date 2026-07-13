@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Music Therapy{% endblock %}
+{% block content %}
+<section class="card">
+    <h2>Music therapy</h2>
+    
+    <div class="music-track-grid">
+        {% for t in music_tracks %}
+        <article class="music-track-card">
+            <h3 class="music-track-title">{{ t.label }}</h3>
+            <p class="muted music-track-sub">{{ t.subtitle }}</p>
+            <audio id="music-{{ t.id }}" class="audio-player music-track-audio" loop preload="auto" controls playsinline>
+                <source src="{{ t.url }}" type="audio/mpeg">
+                Your browser does not support embedded audio.
+            </audio>
+        </article>
+        {% endfor %}
+    </div>
+
+    <div class="music-player-bar">
+        <p id="nowPlaying" class="muted now-playing" aria-live="polite">Choose a track above</p>
+        <label class="volume-row">
+            <span>Volume (all tracks)</span>
+            <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="0.5" aria-label="Volume for all music tracks">
+        </label>
+    </div>
+</section>
+{% endblock content %}
+{% block scripts %}
+<script>
+(function () {
+    const audios = Array.from(document.querySelectorAll(".music-track-audio"));
+    const volume = document.getElementById("musicVolume");
+    const nowPlaying = document.getElementById("nowPlaying");
+
+    function applyVolume(v) {
+        const vol = Math.min(1, Math.max(0, parseFloat(v) || 0));
+        audios.forEach((a) => {
+            a.volume = vol;
+        });
+    }
+
+    if (volume) {
+        applyVolume(volume.value);
+        volume.addEventListener("input", () => {
+            applyVolume(volume.value);
+        });
+    }
+
+    function pauseOthers(current) {
+        audios.forEach((a) => {
+            if (a !== current) {
+                a.pause();
+            }
+        });
+    }
+
+    audios.forEach((a) => {
+        a.addEventListener("play", () => {
+            pauseOthers(a);
+            const label = a.closest(".music-track-card")?.querySelector(".music-track-title")?.textContent?.trim() || "Track";
+            if (nowPlaying) {
+                nowPlaying.textContent = "Now playing: " + label;
+            }
+        });
+        a.addEventListener("pause", () => {
+            if (audios.every((x) => x.paused) && nowPlaying) {
+                nowPlaying.textContent = "Paused — choose a track or press play";
+            }
+        });
+    });
+})();
+</script>
+{% endblock scripts %}

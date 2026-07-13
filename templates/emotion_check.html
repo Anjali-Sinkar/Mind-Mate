@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Emotion Check{% endblock %}
+{% block content %}
+<section class="card">
+    <h2>Real-time emotion check (8 seconds)</h2>
+    <p class="muted">Allow camera access. We estimate facial emotion in real time and use it as context.</p>
+    <video id="video" autoplay muted playsinline class="video"></video>
+    <div class="stats">
+        <p>Detected: <strong id="emotion">neutral</strong></p>
+        <p>Confidence: <strong id="confidence">0.00</strong></p>
+        <p>Timer: <strong id="timer">8</strong>s</p>
+    </div>
+    <button class="btn primary" id="startBtn">Start Scan</button>
+    <a class="btn ghost" href="/assessment">Skip Scan</a>
+</section>
+
+<script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<script>
+const video = document.getElementById("video");
+const emotionEl = document.getElementById("emotion");
+const confidenceEl = document.getElementById("confidence");
+const timerEl = document.getElementById("timer");
+const startBtn = document.getElementById("startBtn");
+
+let latestEmotion = "neutral";
+let latestConfidence = 0;
+
+async function initCamera() {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+}
+
+async function loadModels() {
+    await faceapi.nets.tinyFaceDetector.loadFromUri("https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/");
+    await faceapi.nets.faceExpressionNet.loadFromUri("https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/");
+}
+
+function bestExpression(expressions) {
+    let best = ["neutral", 0];
+    Object.entries(expressions).forEach(([label, value]) => {
+        if (value > best[1]) best = [label, value];
+    });
+    return best;
+}
+
+async function runScan() {
+    let seconds = 8;
+    const interval = setInterval(async () => {
+        timerEl.textContent = seconds;
+        const result = await faceapi
+            .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+            .withFaceExpressions();
+
+        if (result && result.expressions) {
+            const [emotion, confidence] = bestExpression(result.expressions);
+            latestEmotion = emotion;
+            latestConfidence = confidence;
+            emotionEl.textContent = emotion;
+            confidenceEl.textContent = confidence.toFixed(2);
+        }
+
+        seconds -= 1;
+        if (seconds < 0) {
+            clearInterval(interval);
+            await fetch("/api/save-emotion", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ emotion: latestEmotion, confidence: latestConfidence })
+            });
+            window.location.href = "/assessment";
+        }
+    }, 1000);
+}
+
+startBtn.addEventListener("click", async () => {
+    startBtn.disabled = true;
+    startBtn.textContent = "Loading model...";
+    try {
+        await initCamera();
+        await loadModels();
+        startBtn.textContent = "Scanning...";
+        runScan();
+    } catch (err) {
+        alert("Camera or model loading failed. You can skip and continue assessment.");
+        startBtn.disabled = false;
+        startBtn.textContent = "Start Scan";
+    }
+});
+</script>
+{% endblock %}

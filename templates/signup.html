@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign up — MindMate</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-bg" aria-hidden="true"></div>
+    <div class="auth-card float-soft">
+        <div class="auth-emoji" aria-hidden="true">💛</div>
+        <h1>Create your space</h1>
+        <p class="muted">One gentle step. Your data stays on this device’s database.</p>
+        <form id="signupForm" class="auth-form">
+            <input type="text" id="name" placeholder="Your name" required maxlength="80" autocomplete="name">
+            <input type="email" id="email" placeholder="Email" required autocomplete="email">
+            <input type="password" id="password" placeholder="Password (6+ characters)" required minlength="6" autocomplete="new-password">
+            <input type="number" id="age" placeholder="Age (optional)" min="8" max="100">
+            <button type="submit" class="btn primary btn-wide pulse-glow">Create account</button>
+        </form>
+        <p id="msg" class="form-msg"></p>
+        <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+        <p class="tiny muted"><a href="{{ url_for('help_page') }}">Crisis resources (India)</a></p>
+    </div>
+    <script>
+    document.getElementById("signupForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById("msg");
+        msg.textContent = "";
+        const res = await fetch("/api/signup", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                name: document.getElementById("name").value.trim(),
+                email: document.getElementById("email").value.trim(),
+                password: document.getElementById("password").value,
+                age: document.getElementById("age").value || null
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            msg.textContent = data.error || "Could not sign up.";
+            return;
+        }
+        window.location.href = "/";
+    });
+    </script>
+</body>
+</html>

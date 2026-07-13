@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Good jokes{% endblock %}
+{% block content %}
+<section class="card">
+    <h2>Good jokes</h2>
+    <p class="muted">Light, gentle humor from our list — skip this anytime if you are not in the mood.</p>
+
+    <blockquote id="jokeText" class="joke-display">{{ starter_joke }}</blockquote>
+
+    <div class="button-row joke-actions">
+        <button type="button" class="btn primary" id="nextJoke">Another joke</button>
+    </div>
+</section>
+
+<script>
+(function () {
+    const jokeData = {{ jokes | tojson }};
+    const JOKES = Array.isArray(jokeData) ? jokeData : Object.values(jokeData || {}).flat();
+    const el = document.getElementById("jokeText");
+    const btn = document.getElementById("nextJoke");
+
+    function pickRandom(prev) {
+        if (!JOKES.length) return "";
+        if (JOKES.length === 1) return JOKES[0];
+        let j;
+        do {
+            j = JOKES[Math.floor(Math.random() * JOKES.length)];
+        } while (j === prev && JOKES.length > 1);
+        return j;
+    }
+
+    btn.addEventListener("click", () => {
+        const next = pickRandom(el.textContent.trim());
+        el.textContent = next;
+    });
+})();
+</script>
+{% endblock %}

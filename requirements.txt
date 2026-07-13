@@ -1,0 +1,7 @@
+Flask
+gunicorn
+reportlab
+python-dotenv
+groq
+google-genai
+wikipedia

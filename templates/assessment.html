@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Wellness check{% endblock %}
+{% block content %}
+<section class="card assessment-card float-soft">
+    <div class="assess-head">
+        <span class="chip" id="progress">Question 1 / {{ questions|length }}</span>
+        <h2>🎮 Gentle check-in</h2>
+        <p class="muted">Tap a number: <strong>0</strong> not at all → <strong>3</strong> very often.</p>
+    </div>
+    <h3 id="questionText" class="question-text"></h3>
+    <div class="rating-row" id="ratingRow"></div>
+    <button type="button" class="btn primary btn-wide pulse-glow" id="nextBtn">Next</button>
+    <p id="assessErr" class="form-msg" role="alert"></p>
+</section>
+
+<script>
+const questions = {{ questions | tojson }};
+const answers = {};
+let idx = 0;
+
+const progressEl = document.getElementById("progress");
+const questionText = document.getElementById("questionText");
+const ratingRow = document.getElementById("ratingRow");
+const nextBtn = document.getElementById("nextBtn");
+const assessErr = document.getElementById("assessErr");
+
+function updateNextLabel() {
+    const last = idx >= questions.length - 1;
+    nextBtn.textContent = last ? "See results & download report →" : "Next →";
+}
+
+function renderQuestion() {
+    const q = questions[idx];
+    progressEl.textContent = `Question ${idx + 1} / ${questions.length}`;
+    questionText.textContent = q.text;
+    ratingRow.innerHTML = "";
+    const existing = answers[q.id];
+    [0, 1, 2, 3].forEach(v => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn score" + (existing === v ? " active" : "");
+        b.textContent = String(v);
+        b.setAttribute("aria-pressed", existing === v ? "true" : "false");
+        b.onclick = () => {
+            answers[q.id] = v;
+            [...ratingRow.children].forEach(x => {
+                x.classList.remove("active");
+                x.setAttribute("aria-pressed", "false");
+            });
+            b.classList.add("active");
+            b.setAttribute("aria-pressed", "true");
+        };
+        ratingRow.appendChild(b);
+    });
+    assessErr.textContent = "";
+    updateNextLabel();
+}
+
+nextBtn.addEventListener("click", async () => {
+    const q = questions[idx];
+    if (answers[q.id] === undefined) {
+        assessErr.textContent = "Please choose 0, 1, 2, or 3.";
+        return;
+    }
+    idx += 1;
+    if (idx < questions.length) {
+        renderQuestion();
+        return;
+    }
+
+    nextBtn.disabled = true;
+    nextBtn.textContent = "Saving…";
+    assessErr.textContent = "";
+    try {
+        const res = await fetch("/api/assessment", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ answers })
+        });
+        const data = await res.json();
+        if (res.status === 401) {
+            window.location.href = "/login?next=" + encodeURIComponent("/assessment");
+            return;
+        }
+        if (!res.ok) {
+            assessErr.textContent = data.error || "Could not save. Try again.";
+            nextBtn.disabled = false;
+            idx = questions.length - 1;
+            renderQuestion();
+            return;
+        }
+        window.location.href = "/result/" + data.assessment_id;
+    } catch (e) {
+        assessErr.textContent = "Network error. Check connection and try again.";
+        nextBtn.disabled = false;
+        idx = questions.length - 1;
+        renderQuestion();
+    }
+});
+
+renderQuestion();
+</script>
+{% endblock %}

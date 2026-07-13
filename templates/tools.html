@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Care tools{% endblock %}
+{% block content %}
+<section class="card float-soft">
+    <div class="hero-emoji-row" aria-hidden="true"><span class="emoji-bounce">🧘</span></div>
+    <h2>Pick what helps today</h2>
+    <p class="muted">No pressure — you can skip assessments anytime and come back here.</p>
+    <div style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.75rem;">
+        <a class="btn primary" href="{{ url_for('emotion_check') }}">Start mood check + assessment</a>
+        <a class="btn ghost" href="{{ url_for('assessment') }}">Go to assessment</a>
+    </div>
+</section>
+<section class="grid-2 quick-links">
+    <a class="feature card-hover tool-link" href="{{ url_for('chatbot') }}" data-tool="Chat"><span class="feat-emoji">💬</span><h3>Chat</h3><p>Empathetic companion — softer at night.</p></a>
+    <a class="feature card-hover tool-link" href="{{ url_for('breathing') }}" data-tool="Breathing"><span class="feat-emoji">🫁</span><h3>Breathing</h3><p>Follow the orb — calm your nervous system.</p></a>
+    <a class="feature card-hover tool-link" href="{{ url_for('music') }}" data-tool="Music"><span class="feat-emoji">🎵</span><h3>Music</h3><p>Calm, focus, or gentle energy.</p></a>
+    <a class="feature card-hover tool-link" href="{{ url_for('good_jokes') }}" data-tool="Jokes"><span class="feat-emoji">😊</span><h3>Good jokes</h3><p>Light humor — gentle and safe.</p></a>
+    <a class="feature card-hover tool-link" href="{{ url_for('dashboard') }}" data-tool="Dashboard"><span class="feat-emoji">📊</span><h3>Dashboard</h3><p>Time with us &amp; your trends.</p></a>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+    document.querySelectorAll('.tool-link').forEach(function (link) {
+        link.addEventListener('click', function () {
+            const toolName = link.getAttribute('data-tool');
+            if (!toolName) return;
+            fetch('/api/track-tool', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tool_name: toolName })
+            }).catch(function () {});
+        });
+    });
+})();
+</script>
+{% endblock %}

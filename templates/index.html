@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}MindMate — Home{% endblock %}
+{% block content %}
+<section class="card hero float-soft">
+    <div class="hero-emoji-row" aria-hidden="true">
+        <span class="emoji-bounce">🌿</span>
+        <span class="emoji-bounce d1">💙</span>
+        <span class="emoji-bounce d2">☁️</span>
+    </div>
+    <h1>A softer place to land</h1>
+    <p class="lead">Check in with your mood, play a quick wellness game, breathe, chat, or listen — at your pace.</p>
+    <div class="button-row">
+        <a href="{{ url_for('emotion_check') }}" class="btn primary pulse-glow">Start mood check + assessment</a>
+        <a href="{{ url_for('tools') }}" class="btn ghost">Go to care tools</a>
+    </div>
+</section>
+<section class="grid-2 quick-links">
+    <a class="feature card-hover tool-link" href="{{ url_for('chatbot') }}" data-tool="Chat"><span class="feat-emoji">💬</span><h3>Chat</h3><p>Kind companion — extra gentle at night.</p></a>
+    <a class="feature card-hover tool-link" href="{{ url_for('breathing') }}" data-tool="Breathing"><span class="feat-emoji">🫁</span><h3>Breathe</h3><p>Guided rhythms to calm your body.</p></a>
+    <a class="feature card-hover tool-link" href="{{ url_for('music') }}" data-tool="Music"><span class="feat-emoji">🎵</span><h3>Music</h3><p>Soothing sounds for your nervous system.</p></a>
+    <a class="feature card-hover tool-link" href="{{ url_for('good_jokes') }}" data-tool="Jokes"><span class="feat-emoji">😊</span><h3>Good jokes</h3><p>Light humor when you want a smile.</p></a>
+    <a class="feature card-hover tool-link" href="{{ url_for('dashboard') }}" data-tool="Dashboard"><span class="feat-emoji">📊</span><h3>Dashboard</h3><p>Your time here &amp; wellness trends.</p></a>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+    document.querySelectorAll('.tool-link').forEach(function (link) {
+        link.addEventListener('click', function () {
+            const toolName = link.getAttribute('data-tool');
+            if (!toolName) return;
+            fetch('/api/track-tool', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tool_name: toolName })
+            }).catch(function () {});
+        });
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MindMate{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-bg" aria-hidden="true"></div>
+    <div class="floating-shapes" aria-hidden="true">
+        <span class="shape s1">🌤️</span>
+        <span class="shape s2">🌿</span>
+        <span class="shape s3">☁️</span>
+    </div>
+    <header class="topbar glass">
+        <a href="{% if logged_in %}{{ url_for('home') }}{% else %}{{ url_for('login') }}{% endif %}" class="brand">MindMate</a>
+        <nav>
+            {% if logged_in %}
+            <span class="nav-greet">Hi, {{ user_name }}</span>
+            <a href="{{ url_for('tools') }}">Care Tools</a>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('help_page') }}">Help</a>
+            <a href="{{ url_for('logout') }}">Sign out</a>
+            {% else %}
+            <a href="{{ url_for('login') }}">Sign in</a>
+            <a href="{{ url_for('signup_page') }}">Sign up</a>
+            <a href="{{ url_for('help_page') }}">Help</a>
+            {% endif %}
+        </nav>
+    </header>
+    <main class="page">{% block content %}{% endblock %}</main>
+    <footer class="site-footer glass">
+        <p class="footer-line">
+            <a href="{{ url_for('help_page') }}">India helplines &amp; crisis</a>
+            · Not a substitute for professional care
+        </p>
+    </footer>
+    {% if logged_in %}
+    <script>
+    (function () {
+        let last = Date.now();
+        function tick() {
+            const now = Date.now();
+            const delta = Math.min(120, Math.floor((now - last) / 1000));
+            last = now;
+            if (delta > 0 && !document.hidden) {
+                fetch("/api/heartbeat", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ seconds: delta })
+                }).catch(() => {});
+            }
+        }
+        setInterval(tick, 45000);
+        document.addEventListener("visibilitychange", () => { last = Date.now(); });
+    })();
+    </script>
+    {% endif %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

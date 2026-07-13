@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mood Game</title>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+
+        body {
+            background: linear-gradient(160deg, #e8f8fd 0%, #ceeef9 60%, #d9f2f8 100%);
+            color: #1a3a4a;
+            font-family: 'Outfit', Arial, sans-serif;
+            text-align: center;
+            margin-top: 80px;
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            width: 440px;
+            margin: auto;
+            padding: 32px;
+            border-radius: 20px;
+            border: 1.5px solid rgba(41, 175, 212, 0.2);
+            box-shadow: 0 8px 32px rgba(30, 110, 155, 0.15),
+                        inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+
+        .question {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 22px;
+            color: #1a3a4a;
+            line-height: 1.4;
+        }
+
+        .options button {
+            font-size: 1.05rem;
+            margin: 8px;
+            padding: 12px 20px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(41, 175, 212, 0.25);
+            background: rgba(255, 255, 255, 0.75);
+            color: #1a3a4a;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            transition: all 0.22s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 2px 8px rgba(30, 110, 155, 0.08);
+        }
+
+        .options button:hover {
+            background: rgba(41, 175, 212, 0.15);
+            border-color: rgba(41, 175, 212, 0.5);
+            color: #1a8fb0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(41, 175, 212, 0.22);
+        }
+
+        .progress {
+            margin-bottom: 12px;
+            color: #4e7a8e;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.03em;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+
+    <div class="progress" id="progress">Step 1/6</div>
+
+    <div class="question" id="question">
+        How are you feeling right now?
+    </div>
+
+    <div class="options" id="options"></div>
+
+</div>
+
+<script>
+const steps = [
+    {
+        q: "How are you feeling right now?",
+        options: ["😄", "🙂", "😐", "😔", "😣"]
+    },
+    {
+        q: "How was your energy today?",
+        options: ["⚡ High", "🙂 Okay", "😴 Low"]
+    },
+    {
+        q: "How is your sleep recently?",
+        options: ["😴 Good", "😐 Average", "😫 Poor"]
+    },
+    {
+        q: "How stressed do you feel?",
+        options: ["😌 Calm", "😐 Medium", "😖 High"]
+    },
+    {
+        q: "How much are you overthinking?",
+        options: ["🧘 None", "🤔 Some", "😵 A lot"]
+    },
+    {
+        q: "How connected do you feel?",
+        options: ["❤️ Connected", "🙂 Neutral", "💔 Lonely"]
+    }
+];
+
+let answers = [];
+let index = 0;
+
+function loadStep() {
+    document.getElementById("question").innerText = steps[index].q;
+    document.getElementById("progress").innerText =
+        "Step " + (index + 1) + "/" + steps.length;
+
+    let optionsDiv = document.getElementById("options");
+    optionsDiv.innerHTML = "";
+
+    steps[index].options.forEach((opt, i) => {
+        let btn = document.createElement("button");
+        btn.innerText = opt;
+        btn.onclick = () => selectOption(i);
+        optionsDiv.appendChild(btn);
+    });
+}
+
+function selectOption(val) {
+    answers.push(val);
+    index++;
+
+    if (index < steps.length) {
+        loadStep();
+    } else {
+        submitData();
+    }
+}
+
+function submitData() {
+    let form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/predict";
+
+    answers.forEach((val, i) => {
+        let input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "q" + (i + 1);
+        input.value = val;
+        form.appendChild(input);
+    });
+
+    // fill remaining to match backend (12)
+    for (let i = answers.length; i < 12; i++) {
+        let input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "q" + (i + 1);
+        input.value = 0;
+        form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+loadStep();
+</script>
+
+</body>
+</html>

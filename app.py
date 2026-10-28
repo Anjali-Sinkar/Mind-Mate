@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 from groq import Groq
 from google import genai
 from jokes_data import JOKES, get_all_jokes, get_random_joke
+from safety import is_crisis_message
 import wikipedia
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -545,13 +546,7 @@ def chat_fallback_reply(message, lowered):
     Natural fallback when all AI providers fail.
     Never sound repetitive or scripted.
     """
-    risk_terms = [
-        "suicide","kill myself","end my life",
-        "self harm","self-harm",
-        "want to die","better off dead",
-        "no reason to live","can't go on"
-    ]
-    if any(t in lowered for t in risk_terms):
+    if is_crisis_message(message):
         return crisis_reply()
     # Greetings
     greetings = [
@@ -896,13 +891,7 @@ def advanced_chat(user_message, user_id, user_name=None):
     lowered = user_message.lower().strip()
 
     # Crisis Detection
-    crisis_terms = [
-        "suicide","kill myself","end my life","self harm","self-harm",
-        "want to die","better off dead","no reason to live",
-        "can't go on","i want to disappear","i don't want to live"
-    ]
-
-    if any(t in lowered for t in crisis_terms):
+    if is_crisis_message(user_message):
         return crisis_reply()
 
     # Latest Assessment Context
@@ -1634,11 +1623,7 @@ def chat():
     msg = payload.get("message", "").strip()
     lowered = msg.lower()
 
-    risk_terms = [
-        "suicide", "kill myself", "end my life", "self harm", "self-harm",
-        "want to die", "no reason to live", "hang myself", "cut myself",
-    ]
-    if any(term in lowered for term in risk_terms):
+    if is_crisis_message(msg):
         reply = crisis_reply()
     elif msg:
         uid = session.get("user_id")
